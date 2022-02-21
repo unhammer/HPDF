@@ -18,7 +18,8 @@ module Graphics.PDF.Fonts.Type1(
     , Type1Font(..)
     , AFMData
     , Type1FontStructure(..)
-    , getAfmData
+    , readAfmData
+    , parseAfmData
     , mkType1FontStructure
 ) where 
 
@@ -29,8 +30,11 @@ import Graphics.PDF.Fonts.Font
 -- import Graphics.PDF.Fonts.AFMParser
 import Graphics.PDF.Fonts.Encoding
 import Graphics.PDF.Fonts.FontTypes
-import Graphics.PDF.Fonts.AFMParser (AFMFont, getFont, parseFont)
+import Graphics.PDF.Fonts.AFMParser (AFMFont, fontToStructure, parseAfm)
+import qualified Data.ByteString as B
 import Data.List
+import Data.Bifunctor (Bifunctor(second))
+import Text.Parsec.Error (ParseError)
 
 data Type1Font = Type1Font FontStructure (PDFReference EmbeddedFont) deriving Show
 
@@ -47,19 +51,17 @@ instance IsFont Type1Font where
 data AFMData = AFMData AFMFont deriving Show
 data Type1FontStructure = Type1FontStructure FontData FontStructure
 
-getAfmData :: FilePath -> IO AFMData 
-getAfmData path = do  
-    Just r <- parseFont (Right path) 
-    return (AFMData r)
+readAfmData :: FilePath -> IO (Either ParseError AFMData)
+readAfmData path = second AFMData . parseAfm path <$> B.readFile path
 
-mkType1FontStructure :: FontData -> AFMData -> IO (Maybe Type1FontStructure)
+parseAfmData :: B.ByteString -> Either ParseError AFMData
+parseAfmData bs = second AFMData $ parseAfm "<bytestring>" bs
+
+mkType1FontStructure :: FontData -> AFMData -> IO Type1FontStructure
 mkType1FontStructure pdfRef (AFMData f)  = do
   theEncoding <- getEncoding AdobeStandardEncoding
-  maybeFs <- getFont (Right f) theEncoding Nothing
-  case maybeFs of 
-    Just theFont -> 
-      return . Just $ Type1FontStructure pdfRef theFont
-    Nothing -> return Nothing
+  let theFont = fontToStructure f theEncoding Nothing
+  return $ Type1FontStructure pdfRef theFont
 
  
 

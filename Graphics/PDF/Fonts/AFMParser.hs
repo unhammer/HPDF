@@ -14,16 +14,15 @@
 -- AFM AFMParser
 ---------------------------------------------------------
 module Graphics.PDF.Fonts.AFMParser(
-      getFont
-    , AFMFont(..)
+      AFMFont(..)
     , EncodingScheme(..)
     , Metric(..)
     , KX(..)
-    , parseFont
+    , parseAfm
+    , fontToStructure
     ) where 
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
 import Data.ByteString.Char8 (unpack)
 import Text.ParserCombinators.Parsec hiding(space)
 import Text.Parsec(modifyState)
@@ -343,8 +342,8 @@ addKern d (KX sa sb c) fs =
 -- Otherwise we use the encoding we found in the afm file.
 -- It is used to force MacRomanEncoding on not symbolic default fonts.
 fontToStructure :: AFMFont 
-                -> M.Map PostscriptName Char 
-                -> Maybe (M.Map PostscriptName GlyphCode)
+                -> M.Map PostscriptName Char   -- ^ Glyph name to unicode
+                -> Maybe (M.Map PostscriptName GlyphCode)  -- ^ Glyph name to glyph code if not standard coding
                 -> FontStructure 
 fontToStructure afm' encoding' maybeMapNameToGlyph =
   let h = (afmAscent afm' - afmDescent afm') 
@@ -382,31 +381,8 @@ fontToStructure afm' encoding' maybeMapNameToGlyph =
     Nothing -> fs2
     Just k -> foldr (addKern nameToGlyph) fs2 k
 
-afmParseFromFile :: AFMParser AFMFont -> FilePath -> ByteString -> IO (Either ParseError AFMFont)
-afmParseFromFile p path bs = do 
-  return $ runParser p emptyAFM path (unpack bs)
+afmParseFromFile :: AFMParser AFMFont -> FilePath -> ByteString -> Either ParseError AFMFont
+afmParseFromFile p path bs = runParser p emptyAFM path (unpack bs)
 
-parseFont :: Either ByteString String -> IO (Maybe AFMFont)
-parseFont (Left bs) = do
-    r <- afmParseFromFile afm "<embedded>" bs
-    case r of
-      Left e -> error (show e)
-      Right r' -> return $ Just r'
-parseFont (Right path) = do
-    bs <- B.readFile path
-    r <- afmParseFromFile afm path bs
-    case r of
-      Left e -> error (show e)
-      Right r' -> return $ Just r'
-
-getFont :: Either ByteString AFMFont
-        -> M.Map PostscriptName Char  -- ^ Glyph name to unicode
-        -> Maybe (M.Map PostscriptName GlyphCode)  -- ^ Glyph name to glyph code if not standard coding
-        -> IO (Maybe FontStructure)
-getFont (Left s) encoding' nameToGlyph = do 
-  result <- parseFont (Left s)
-  case result of 
-    Nothing -> return Nothing 
-    Just r -> return (Just $ fontToStructure r encoding' nameToGlyph)
-getFont (Right result) encoding' nameToGlyph = return . Just $ fontToStructure result encoding' nameToGlyph
-
+parseAfm :: FilePath -> ByteString -> Either ParseError AFMFont
+parseAfm = afmParseFromFile afm

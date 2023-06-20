@@ -45,10 +45,12 @@ the default size (the pages can use different sizes if specified) and if the doc
 So, a standard way to start a PDF document is with:
 
 @
+{-# LANGUAGE OverloadedStrings #-}
+
 main :: IO()
 main = do
     let rect = 'PDFRect' 0 0 600 400
-    'runPdf' \"demo.pdf\" ('standardDocInfo' { author='toPDFString' \"alpheccar\", compressed = False}) rect $ do
+    'runPdf' \"demo.pdf\" ('standardDocInfo' { author=\"alpheccar\", compressed = False}) rect $ do
         myDocument
 @
 
@@ -65,8 +67,8 @@ of how you could add some pages and specify the table of contents:
 myDocument :: 'PDF' ()
 myDocument = do
     page1 <- 'addPage' Nothing
-    'newSection' ('toPDFString' \"Section\") Nothing Nothing $ do
-     'newSection' ('toPDFString' \"Subsection\") Nothing Nothing $ do
+    'newSection' (\"Section\") Nothing Nothing $ do
+     'newSection' (\"Subsection\") Nothing Nothing $ do
         createPageContent page1
 @
 
@@ -80,16 +82,16 @@ There are other functions to add pages with transitions.
 
 To create content for a page, you have to use a page reference with 'drawWithPage'.
 
-'drawWithPage' is using a 'Draw' monad value.
+'drawWithPage' is using a 'PDF' monad value.
 
-Element of the 'Draw' monad are built with geometry, text and color primitives.
+Element of the 'PDF' monad are built with geometry, text and color primitives.
 
 @
-createPageContent :: 'PDFReference' 'PDFPage' -> Draw ()
+createPageContent :: 'PDFReference' 'PDFPage' -> PDF ()
 createPageContent page = 'drawWithPage' page $ do
     'strokeColor' 'red'
     'setWidth' 0.5
-    'stroke' $ 'Rectangle' 10 0 200 300
+    'stroke' $ 'Rectangle' (10 :+ 0) (200 :+ 300)
 @
 
 -}
@@ -99,16 +101,16 @@ createPageContent page = 'drawWithPage' page $ do
 Text is complex. You can use the low level 'PDFText' to create a text in the 'Draw' monad. For instance:
 
 @
-textText :: 'PDFFont' -> 'PDFString' -> 'Draw' ()
-textText f t = do
+textText :: 'PDFFont' -> 'Text' -> 'Draw' ()
+textText theFont@(PDFFont f s) t = do
      'drawText' $ do
-         'setFont' f
+         'setFont' theFont
          'textStart' 10 200.0
-         'leading' $ 'getHeight' f
+         leading $ getHeight f s
          'renderMode' 'FillText'
          'displayText' t
          'startNewLine'
-         'displayText' $ 'toPDFString' \"Another little test\"
+         'displayText' \"Another little test\"
 @
 
 It gives a detailed control on the position of characters and lines but it is too much work.
@@ -118,7 +120,7 @@ The library is thus supporting a higher level typesetting system with paragraph 
 Displaying a formatted text is done with 'displayFormattedText' and using a typesetting monad value:
 
 @
-'displayFormattedText' ('Rectangle' (10 :+ 0) (110 :+ 300)) 'NormalPara' 'Normal' $ do
+'displayFormattedText' ('Rectangle' (10 :+ 0) (110 :+ 300)) 'NormalPara' ('Normal' timesRoman) $ do
    'paragraph' $ do
         'txt' $ \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor \"
         'txt' $ \"incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \"
@@ -134,20 +136,20 @@ NormalPara is part of an algebraic data type defining some vertical styles (from
 
 @
 data MyVertStyles = NormalPara
-                  | CirclePara
-                  | BluePara !PDFFloat
+                  | CirclePara AnyFont
+                  | BluePara AnyFont !PDFFloat
 @
 
 and Normal is part of another algebraic data typec (from file test.hs):
 
 @
-data MyParaStyles = Normal
-                  | Bold
-                  | Crazy
-                  | SuperCrazy [Int] [PDFFloat]
-                  | DebugStyle
-                  | RedRectStyle
-                  | BlueStyle
+data MyParaStyles = Normal AnyFont
+                  | Bold AnyFont
+                  | Crazy AnyFont
+                  | SuperCrazy AnyFont [Int] [PDFFloat]
+                  | DebugStyle AnyFont
+                  | RedRectStyle AnyFont
+                  | BlueStyle AnyFont
 @
 
 The library is coming with standard styles 'StandardParagraphStyle' and 'StandardStyle'.
@@ -172,7 +174,7 @@ a circle as shape for instance). This style is also used to style the bounding b
 The other attributes like distance between two lines etc ... are controlled in the typesetting monad.
 
 @
-'setParaStyle' (BluePara 0)
+'setParaStyle' (BluePara helveticaBold 0)
 'setFirstPassTolerance' 500
 'unstyledGlue' 6 0.33 0
 'paragraph' $ do
@@ -319,7 +321,7 @@ A pdf page can contain several kind of annotations like links, notes etc ... For
 display a link:
 
 @
-'newAnnotation' ('URLLink' ('toPDFString' \"Go to my blog\") [0,0,200,100] \"http:\/\/www.alpheccar.org\" True)
+'newAnnotation' ('URLLink' (\"Go to my blog\") [0,0,200,100] \"http:\/\/www.alpheccar.org\" True)
 @
 
 

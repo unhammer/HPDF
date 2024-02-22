@@ -1,5 +1,9 @@
 # Changelog for [`HPDF` package](http://hackage.haskell.org/package/HPDF)
 
+## 1.7
+
+   * Add transparency support and more function types (#16)
+
 ## 1.6.1
 
    * Fix for building with mtl-2.3

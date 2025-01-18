@@ -184,7 +184,7 @@ metricElem  = do _ <- char 'C'
               <|> 
               do _ <- char 'N'
                  spaces
-                 c <- many1 (alphaNum <|> char '.')
+                 c <- many1 (alphaNum <|> char '.' <|> char '_')
                  return $ N c
               <|>
               do _ <- char 'B'
@@ -194,9 +194,9 @@ metricElem  = do _ <- char 'C'
               <|> 
               do _ <- char 'L'
                  spaces
-                 _ <- many1 letter
+                 _ <- many1 (alphaNum <|> char '.' <|> char '_')
                  spaces
-                 _ <- many1 letter
+                 _ <- many1 (alphaNum <|> char '.' <|> char '_')
                  return L
                                 
 -- isEncoded :: Metric -> Bool
@@ -222,9 +222,9 @@ charMetric = do
 kernPair :: AFMParser KX
 kernPair = do _ <- string "KPX"
               spaces
-              namea <- many1 alphaNum
+              namea <- many1 (alphaNum <|> char '.' <|> char '_')
               spaces
-              nameb <- many1 alphaNum
+              nameb <- many1 (alphaNum <|> char '.' <|> char '_')
               spaces
               nb <- many1 (oneOf "-+0123456789")
               line
